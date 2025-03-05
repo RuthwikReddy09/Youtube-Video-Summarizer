@@ -126,3 +126,7 @@
             background-color: #005fa3;
         }
         
+        .image>img{
+            width: 500px;
+        }
+        
