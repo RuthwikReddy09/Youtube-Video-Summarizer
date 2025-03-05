@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build a YouTube Video Summarizer Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Build Your First AI App: A YouTube Video Summarizer with LangChain
+    </h1>
+
+    <p>In today's digital age, there is an overwhelming amount of content available on platforms like YouTube. While video content is often rich and engaging, sometimes we need a quick summary to get the gist of what the video is about, especially when we're short on time. This is where a YouTube Video Summarizer tool comes in handy.</p>
+
+    <p>In this blog post, we will walk through how to build a simple yet effective YouTube Video Summarizer tool using <strong>LangChain</strong> and <strong>OpenAI</strong>. LangChain is a powerful framework for building language model-powered applications, and when combined with OpenAI’s models, we can create a solution that can extract key insights from any YouTube video.</p>
+
+
+    <h2>Prerequisites</h2>
+<p>To build this project, you'll need:</p>
+<ul>
+    <li><strong>Python</strong> installed on your machine.</li>
+    <li><strong>Streamlit</strong> for the user interface.</li>
+    <li><strong>OpenAI API Key</strong> for using GPT models. You can generate an API key by signing up at 
+        <a href="https://platform.openai.com/signup/" target="_blank">OpenAI</a> and visiting the 
+        <a href="https://platform.openai.com/api-keys/" target="_blank">API Keys page</a>.
+    </li>
+    <li><strong>LangChain</strong> for document processing and summarization.</li>
+</ul>
+
+
+    <p>You can install the required libraries using pip:</p>
+    <pre><code>pip install langchain streamlit openai python-dotenv</code></pre>
+
+    <p>You'll also need to have your OpenAI API key. Make sure to store it in a <strong>.env</strong> file in your project directory. The <strong>.env</strong> file should contain the following:</p>
+    <pre><code>OPENAI_API_KEY = your-api-key-here</code></pre>
+
+    <h2>Step-by-Step Guide</h2>
+
+    <h3>1. Setup and Load Environment Variables</h3>
+    <p>First, we need to load the OpenAI API key from an environment file (<strong>.env</strong>). This allows us to securely use the API key in our script.</p>
+    <pre><code>
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Get OpenAI API key from environment variables
+openai_api_key = os.getenv("OPENAI_API_KEY")
+    </code></pre>
+
+    <h3>2. User Interface with Streamlit</h3>
+    <p>We'll use <strong>Streamlit</strong> to create a simple web interface for the user to input a YouTube video URL. Streamlit makes it easy to build interactive web applications with minimal effort.</p>
+    <pre><code>
+import streamlit as st
+
+# Streamlit UI for user input
+st.title("YouTube Video Summarizer")
+st.write("Enter the YouTube video URL below to get a summarized version of its transcript:")
+
+# User input for the video URL
+youtube_url = st.text_input("YouTube Video URL", "https://youtu.be/5C_HPTJg5ek?si=TuwLSIs1k99LH5b")
+    </code></pre>
+
+    <h3>3. Load Transcript Using LangChain</h3>
+    <p>LangChain provides a <strong>YoutubeLoader</strong> that can extract the transcript from a YouTube video. Once the user inputs a valid video URL, we will use this loader to fetch the transcript.</p>
+    <pre><code>
+from langchain_community.document_loaders import YoutubeLoader
+
+# Load the YouTube transcript when the button is clicked
+if st.button("Summarize"):
+    if youtube_url:
+        # Load the YouTube transcript
+        loader = YoutubeLoader.from_youtube_url(youtube_url, language=["en", "en-US"])
+        transcript = loader.load()
+    </code></pre>
+
+    <h3>4. Text Splitting</h3>
+    <p>Large transcripts can be long for a language model to process at once. We’ll use the <strong>TokenTextSplitter</strong> from LangChain to break the transcript into smaller, more manageable chunks.</p>
+    <pre><code>
+from langchain.text_splitter import TokenTextSplitter
+
+# Split Transcript into chunks
+splitter = TokenTextSplitter(model_name="gpt-3.5-turbo", chunk_size=10000, chunk_overlap=100)
+chunks = splitter.split_documents(transcript)
+    </code></pre>
+
+    <h3>5. Summarization Using OpenAI's GPT-3.5</h3>
+    <p>Now, we will use OpenAI’s <strong>ChatGPT</strong> model to summarize the chunks of the transcript. We will use LangChain’s <strong>load_summarize_chain</strong> function to connect the summarization chain to OpenAI’s GPT-3.5 model.</p>
+    <pre><code>
+from langchain_openai import ChatOpenAI
+from langchain.chains.summarize import load_summarize_chain
+
+# Set up OpenAI's LLM with the API key
+llm = ChatOpenAI(openai_api_key=openai_api_key, model="gpt-3.5-turbo", temperature=0.3)
+
+# Summarize the document chunks
+summarize_chain = load_summarize_chain(llm=llm, chain_type="refine", verbose=True)
+summary = summarize_chain.run(chunks)
+    </code></pre>
+
+    <h3>6. Display Summary and Save Output</h3>
+    <p>Once the summary is generated, we can display it on the Streamlit web page. Optionally, we can also save the summary to a <strong>.txt</strong> file for later reference.</p>
+    <pre><code>
+# Display the summary in Streamlit
+st.subheader("Video Summary")
+st.write(summary)
+
+# Optionally, write summary to file
+with open("summary.txt", "w") as f:
+    f.write(summary)
+    </code></pre>
+    <h4>App Preview</h4>
+    <p>Below is a preview of how the YouTube Video Summarizer app looks when running:</p>
+    <div class="image">
+        <img src="app.png" alt="YouTube Video Summarizer App Preview">
+    </div>
+    
+    <h2>Complete Code:</h2>
+    <pre><code>
+import os
+from dotenv import load_dotenv
+from langchain_community.document_loaders import YoutubeLoader
+from langchain.chains.summarize import load_summarize_chain
+from langchain_openai import ChatOpenAI
+from langchain.text_splitter import TokenTextSplitter
+import streamlit as st
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Get OpenAI API key from environment variables
+openai_api_key = os.getenv("OPENAI_API_KEY")
+
+# Streamlit UI for user input
+st.title("YouTube Video Summarizer")
+st.write("Enter the YouTube video URL below to get a summarized version of its transcript:")
+
+# User input for the video URL
+youtube_url = st.text_input("YouTube Video URL", "https://youtu.be/5C_HPTJg5ek?si=TuwLSIs1k99LH5b")
+
+# Load Transcript when the button is clicked
+if st.button("Summarize"):
+    if youtube_url:
+        # Load the YouTube transcript
+        loader = YoutubeLoader.from_youtube_url(youtube_url, language=["en", "en-US"])
+        transcript = loader.load()
+
+        if transcript:
+            # Split Transcript
+            splitter = TokenTextSplitter(model_name="gpt-3.5-turbo", chunk_size=10000, chunk_overlap=100)
+            chunks = splitter.split_documents(transcript)
+
+            # Set up OpenAI's LLM with the API key
+            llm = ChatOpenAI(openai_api_key=openai_api_key, model="gpt-3.5-turbo", temperature=0.3)
+
+            # Summarize
+            summarize_chain = load_summarize_chain(llm=llm, chain_type="refine", verbose=True)
+            summary = summarize_chain.run(chunks)
+            
+            # Display the summary in Streamlit
+            st.subheader("Video Summary")
+            st.write(summary)
+
+            # Optionally, write summary to file
+            with open("summary.txt", "w") as f:
+                f.write(summary)
+        else:
+            st.error("No transcript available for the provided video.")
+    else:
+        st.warning("Please enter a valid YouTube URL.")
+    </code></pre>
+
+    <h2>Conclusion</h2>
+    <p>By using <strong>LangChain</strong> and <strong>OpenAI</strong>, we can easily extract meaningful summaries from YouTube videos in just a few lines of code. This tool can be a game-changer for those who want to quickly grasp the content of long YouTube videos without watching them entirely.</p>
+
+    <p>This solution can be extended further to provide more sophisticated summarization techniques, integrate with other platforms, or add additional features such as multi-language support.</p>
+
+    <p>Feel free to try it out and experiment with your own customizations!</p>
+    <a href="https://ruthwikreddy09.github.io/Intro-to-LangChain/" class="next-button"> &larr; Prev: Intro to LangChain</a>
+    <footer>
+        <p>&copy; 2025 LangChain Blog - Ruthwik Doodipala</p>
+    </footer>
+</body>
+</html>
